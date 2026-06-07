@@ -2,12 +2,12 @@ apply plugin: 'com.android.application'
 
 android {
     namespace = "com.finansight.app"
-    compileSdk = 34  // Update ke 34
+    compileSdk = 33  // Turunkan ke 33
     
     defaultConfig {
         applicationId = "com.finansight.app"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = 33  // Turunkan ke 33
         versionCode = 1
         versionName = "1.0"
         
@@ -15,8 +15,8 @@ android {
     }
     
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21  // Ubah ke 21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_17  // Kembali ke 17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     
     buildTypes {

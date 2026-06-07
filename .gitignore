@@ -1,11 +1,18 @@
 node_modules/
+www/
 dist/
+.DS_Store
+*.log
+*.lock
 
-# Android - hanya ignore build artifacts & SDK cache
-android/build/
+# Android
 android/.gradle/
 android/local.properties
 android/captures/
-android/gradlew.bat
-android/**/*.apk
-android/**/*.aab
+android/app/build/
+android/build/
+*.iml
+.idea/
+
+# Capacitor
+capacitor.config.json.backup
