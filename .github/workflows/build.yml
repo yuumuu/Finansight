@@ -5,7 +5,11 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Bisa di-run manual
+  workflow_dispatch:
+
+# Force Node.js 24 untuk actions
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -24,23 +28,29 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'  # Ubah ke 22 (LTS terbaru)
           cache: 'npm'
       
+      - name: Verify Node version
+        run: node --version  # Should show v22.x.x
+      
       - name: Install dependencies
-        run: npm ci  # Lebih baik dari npm install untuk CI
+        run: npm ci
       
       - name: Create web directory
         run: mkdir -p www
       
       - name: Copy web assets
         run: |
-          cp index.html www/ 2>/dev/null || echo "index.html not found"
-          cp app.js www/ 2>/dev/null || echo "app.js not found"
-          cp styles.css www/ 2>/dev/null || true
+          if [ -f "index.html" ]; then cp index.html www/; else echo "index.html not found"; exit 1; fi
+          if [ -f "app.js" ]; then cp app.js www/; else echo "app.js not found"; exit 1; fi
+          [ -f "styles.css" ] && cp styles.css www/ || true
       
-      - name: Build web app (if build script exists)
+      - name: Build web app
         run: npm run build || echo "No build script, skipping"
+      
+      - name: List www contents
+        run: ls -la www/
       
       - name: Sync Capacitor
         run: npx cap sync android
@@ -59,15 +69,3 @@ jobs:
           compression-level: 0
           retention-days: 30
           if-no-files-found: error
-      
-      - name: Build Release APK (Optional)
-        run: cd android && ./gradlew assembleRelease || echo "Release build skipped"
-      
-      - name: Upload Release APK (if exists)
-        uses: actions/upload-artifact@v4
-        with:
-          name: finansight-release
-          path: android/app/build/outputs/apk/release/*.apk
-          compression-level: 0
-          retention-days: 30
-          if-no-files-found: warn

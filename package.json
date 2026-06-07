@@ -6,7 +6,8 @@
   "scripts": {
     "build": "mkdir -p www && cp index.html app.js www/",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "sync": "npx cap sync android"
+    "sync": "npx cap sync android",
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -24,5 +25,8 @@
     "@capacitor/android": "^8.4.0",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }
