@@ -1,0 +1,11 @@
+node_modules/
+dist/
+
+# Android - hanya ignore build artifacts & SDK cache
+android/build/
+android/.gradle/
+android/local.properties
+android/captures/
+android/gradlew.bat
+android/**/*.apk
+android/**/*.aab
