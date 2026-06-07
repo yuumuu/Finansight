@@ -5,6 +5,14 @@
   "server": {
     "androidScheme": "https"
   },
+  "android": {
+    "buildOptions": {
+      "keystorePath": "",
+      "keystoreAlias": "",
+      "keystorePassword": "",
+      "keystoreAliasPassword": ""
+    }
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 2000,

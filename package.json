@@ -4,10 +4,12 @@
   "description": "Aplikasi perencana keuangan pribadi berbasis web yang dapat di-build ke Android/iOS menggunakan Capacitor JS.",
   "main": "app.js",
   "scripts": {
-    "build": "mkdir -p www && cp index.html app.js www/",
+    "build": "node -e \"const fs=require('fs');if(!fs.existsSync('www'))fs.mkdirSync('www');fs.copyFileSync('index.html','www/index.html');fs.copyFileSync('app.js','www/app.js');\"",
     "test": "echo \"Error: no test specified\" && exit 1",
     "sync": "npx cap sync android",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "open:android": "npx cap open android",
+    "clean": "node -e \"const fs=require('fs');if(fs.existsSync('www'))fs.rmSync('www',{recursive:true,force:true});\""
   },
   "repository": {
     "type": "git",
@@ -22,9 +24,10 @@
   },
   "homepage": "https://github.com/yuumuu/Finansight#readme",
   "dependencies": {
-    "@capacitor/android": "^8.4.0",
-    "@capacitor/cli": "^8.4.0",
-    "@capacitor/core": "^8.4.0"
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0"
   },
   "engines": {
     "node": ">=22.0.0"
