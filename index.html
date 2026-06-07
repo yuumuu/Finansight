@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>FinanSight</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+        
+        /* Theme */
+        :root {
+            --bg: #f9fafb;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --text: #111827;
+            --text-sec: #6b7280;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+        body.dark {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text: #f1f5f9;
+            --text-sec: #94a3b8;
+        }
+        body { background: var(--bg); color: var(--text); transition: background 0.3s, color 0.3s; }
+
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; }
+        .surface { background: var(--surface); }
+        .border-c { border-color: var(--border); }
+        .text-primary-c { color: var(--text); }
+        .text-sec-c { color: var(--text-sec); }
+
+        /* Nav */
+        .active-nav { background: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(59,130,246,.3); }
+        .nav-btn { color: var(--text-sec); }
+        .nav-btn.active-nav { color: #fff; }
+
+        /* Animations */
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-panel { animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1); }
+        .fade-in { animation: fadeIn 0.25s ease forwards; }
+
+        /* Pin */
+        .pin-circle { transition: all 0.1s; user-select: none; }
+        .pin-circle:active { transform: scale(0.92); background: #dbeafe; }
+
+        /* Calendar */
+        .cal-day { transition: all 0.15s; cursor: pointer; border-radius: 10px; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; font-size: 13px; }
+        .cal-day:hover { background: var(--border); }
+        .cal-day.selected { background: var(--primary); color: #fff; }
+        .cal-day.today:not(.selected) { font-weight: 700; color: var(--primary); }
+        .cal-day .dot { position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--primary); }
+        .cal-day.selected .dot { background: #fff; }
+
+        /* Inputs */
+        input, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; width: 100%; padding: 12px 14px; font-size: 14px; transition: border-color 0.2s; outline: none; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5); }
+        body.dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); }
+
+        /* Progress bar */
+        .progress-bar { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+
+        /* Tag badges */
+        .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+        .badge-debt { background: #fee2e2; color: #dc2626; }
+        .badge-rec { background: #dcfce7; color: #16a34a; }
+        .badge-warn { background: #fef3c7; color: #d97706; }
+        .badge-blue { background: #dbeafe; color: #2563eb; }
+        body.dark .badge-debt { background: #450a0a; color: #fca5a5; }
+        body.dark .badge-rec { background: #052e16; color: #86efac; }
+        body.dark .badge-warn { background: #451a03; color: #fcd34d; }
+        body.dark .badge-blue { background: #1e3a5f; color: #93c5fd; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+        /* Modal backdrop */
+        .modal-backdrop { backdrop-filter: blur(4px); }
+
+        /* Header */
+        #header { background: var(--surface); border-bottom: 1px solid var(--border); }
+        #bottomNav { background: var(--surface); border-top: 1px solid var(--border); }
+
+        /* Swipe delete hint */
+        .item-card { transition: transform 0.2s; }
+        .item-card:active { transform: scale(0.99); }
+
+        /* Pill tabs */
+        .filter-btn { padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 500; transition: all 0.2s; background: var(--border); color: var(--text-sec); white-space: nowrap; }
+        .filter-btn.active { background: var(--primary); color: #fff; }
+
+        /* Stats ring */
+        .ring-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+
+        /* Empty state */
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-sec); }
+
+        /* Toast */
+        #toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); background: #111827; color: #fff; padding: 10px 20px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 999; opacity: 0; transition: all 0.3s; pointer-events: none; }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* Confirm modal */
+        #confirmModal { z-index: 200; }
+    </style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-center justify-center">
+    <div class="card mx-4 p-6 w-full max-w-sm fade-in">
+        <h3 class="font-bold text-lg mb-2" id="confirmTitle">Hapus Data?</h3>
+        <p class="text-sec-c text-sm mb-5" id="confirmMsg">Tindakan ini tidak dapat dibatalkan.</p>
+        <div class="flex gap-3">
+            <button id="confirmYes" class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold">Hapus</button>
+            <button onclick="closeConfirm()" class="flex-1 py-3 rounded-xl font-semibold" style="background:var(--border);color:var(--text)">Batal</button>
+        </div>
+    </div>
+</div>
+
+<!-- PIN SCREEN -->
+<div id="pinScreen" class="fixed inset-0 bg-white dark:bg-slate-900 z-50 flex items-center justify-center" style="background: var(--surface);">
+    <div class="w-full max-w-xs px-6">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+            </div>
+            <h1 class="text-2xl font-bold mb-1">FinanSight</h1>
+            <p class="text-sm text-sec-c" id="pinLabel">Masukkan PIN 6 digit</p>
+        </div>
+
+        <!-- PIN dots display -->
+        <div class="flex justify-center gap-3 mb-8" id="pinDots">
+            <div class="w-3 h-3 rounded-full border-2 border-gray-300" id="dot0"></div>
+            <div class="w-3 h-3 rounded-full border-2 border-gray-300" id="dot1"></div>
+            <div class="w-3 h-3 rounded-full border-2 border-gray-300" id="dot2"></div>
+            <div class="w-3 h-3 rounded-full border-2 border-gray-300" id="dot3"></div>
+            <div class="w-3 h-3 rounded-full border-2 border-gray-300" id="dot4"></div>
+            <div class="w-3 h-3 rounded-full border-2 border-gray-300" id="dot5"></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('1')">1</button>
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('2')">2</button>
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('3')">3</button>
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('4')">4</button>
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('5')">5</button>
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('6')">6</button>
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('7')">7</button>
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('8')">8</button>
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('9')">9</button>
+            <button class="pin-circle py-4 rounded-2xl text-sm font-medium" style="background:var(--border);color:var(--text-sec)" onclick="pinClear()">Hapus</button>
+            <button class="pin-circle py-4 rounded-2xl text-xl font-bold" style="background:var(--border)" onclick="pinInput('0')">0</button>
+            <button class="pin-circle py-4 rounded-2xl bg-blue-500 text-white flex items-center justify-center" onclick="pinSubmit()">
+                <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <button onclick="resetPinFlow()" class="w-full mt-6 text-blue-500 text-sm font-medium py-2">Lupa / Reset PIN</button>
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="hidden">
+
+    <!-- HEADER -->
+    <div id="header" class="px-4 py-3 sticky top-0 z-30">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-lg font-bold">FinanSight</h1>
+                <p class="text-xs text-sec-c" id="headerDate"></p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="toggleTheme()" class="p-2 rounded-xl" style="background:var(--border)" title="Toggle Theme">
+                    <i data-lucide="moon" class="w-4 h-4" id="themeIcon"></i>
+                </button>
+                <button onclick="showExportModal()" class="p-2 rounded-xl" style="background:var(--border)" title="Ekspor/Impor">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="pb-24">
+
+        <!-- DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content px-4 pt-4 space-y-4 fade-in">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="card p-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-green-600"></i>
+                        </div>
+                        <span class="text-xs text-sec-c">Piutang</span>
+                    </div>
+                    <p class="text-lg font-bold text-green-600" id="dash-receivable">Rp 0</p>
+                    <p class="text-xs text-sec-c mt-1" id="dash-receivable-count">0 transaksi</p>
+                </div>
+                <div class="card p-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                            <i data-lucide="trending-down" class="w-4 h-4 text-red-600"></i>
+                        </div>
+                        <span class="text-xs text-sec-c">Utang</span>
+                    </div>
+                    <p class="text-lg font-bold text-red-500" id="dash-debt">Rp 0</p>
+                    <p class="text-xs text-sec-c mt-1" id="dash-debt-count">0 transaksi</p>
+                </div>
+            </div>
+
+            <!-- Wishlist Progress -->
+            <div class="card p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-sm">Target Tabungan</h3>
+                    <button onclick="switchTab('planner')" class="text-blue-500 text-xs font-medium">Lihat Semua</button>
+                </div>
+                <div id="dash-progress" class="space-y-3">
+                    <div class="empty-state py-6">
+                        <p class="text-sm">Belum ada wishlist</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activities -->
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4">Aktivitas Terbaru</h3>
+                <div id="dash-recent" class="space-y-3">
+                    <div class="empty-state py-6">
+                        <p class="text-sm">Belum ada aktivitas</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Add -->
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-3">Aksi Cepat</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="showAddDebtModal()" class="flex items-center gap-2 p-3 rounded-xl text-sm font-medium" style="background:var(--border)">
+                        <i data-lucide="hand-coins" class="w-4 h-4 text-blue-500"></i> Catat Utang
+                    </button>
+                    <button onclick="showAddTaskModal()" class="flex items-center gap-2 p-3 rounded-xl text-sm font-medium" style="background:var(--border)">
+                        <i data-lucide="check-square" class="w-4 h-4 text-green-500"></i> Tambah Tugas
+                    </button>
+                    <button onclick="showAddWishlistModal()" class="flex items-center gap-2 p-3 rounded-xl text-sm font-medium" style="background:var(--border)">
+                        <i data-lucide="shopping-bag" class="w-4 h-4 text-purple-500"></i> Wishlist Baru
+                    </button>
+                    <button onclick="switchTab('calendar'); showAddEventModal()" class="flex items-center gap-2 p-3 rounded-xl text-sm font-medium" style="background:var(--border)">
+                        <i data-lucide="calendar-plus" class="w-4 h-4 text-orange-500"></i> Tambah Event
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CALENDAR -->
+        <div id="tab-calendar" class="tab-content hidden px-4 pt-4 space-y-4 fade-in">
+            <div class="card p-4">
+                <div class="flex justify-between items-center mb-5">
+                    <button id="prevMonth" onclick="changeMonth(-1)" class="p-2 rounded-xl" style="background:var(--border)">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                    </button>
+                    <h3 id="calMonthLabel" class="font-semibold text-base"></h3>
+                    <button id="nextMonth" onclick="changeMonth(1)" class="p-2 rounded-xl" style="background:var(--border)">
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 mb-1">
+                    <div class="text-center text-xs text-sec-c py-1">Min</div>
+                    <div class="text-center text-xs text-sec-c py-1">Sen</div>
+                    <div class="text-center text-xs text-sec-c py-1">Sel</div>
+                    <div class="text-center text-xs text-sec-c py-1">Rab</div>
+                    <div class="text-center text-xs text-sec-c py-1">Kam</div>
+                    <div class="text-center text-xs text-sec-c py-1">Jum</div>
+                    <div class="text-center text-xs text-sec-c py-1">Sab</div>
+                </div>
+                <div id="calGrid" class="grid grid-cols-7 gap-1"></div>
+            </div>
+
+            <div class="card p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-sm" id="calDayLabel">Pilih Tanggal</h3>
+                    <button onclick="showAddEventModal()" class="p-2 rounded-xl bg-blue-500 text-white">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div id="calDayEvents" class="space-y-2">
+                    <div class="empty-state py-6"><p class="text-sm">Klik tanggal untuk melihat event</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DEBTS -->
+        <div id="tab-debts" class="tab-content hidden px-4 pt-4 fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold">Utang & Piutang</h2>
+                <button onclick="showAddDebtModal()" class="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-xl text-sm font-medium">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Tambah
+                </button>
+            </div>
+            <div class="flex gap-2 overflow-x-auto pb-3 mb-4">
+                <button class="filter-btn active" data-df="all" onclick="setDebtFilter('all')">Semua</button>
+                <button class="filter-btn" data-df="debt" onclick="setDebtFilter('debt')">Utang</button>
+                <button class="filter-btn" data-df="receivable" onclick="setDebtFilter('receivable')">Piutang</button>
+                <button class="filter-btn" data-df="overdue" onclick="setDebtFilter('overdue')">Terlambat</button>
+                <button class="filter-btn" data-df="paid" onclick="setDebtFilter('paid')">Lunas</button>
+            </div>
+            <div id="debtsList" class="space-y-3"></div>
+        </div>
+
+        <!-- TASKS -->
+        <div id="tab-tasks" class="tab-content hidden px-4 pt-4 fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold">Daftar Kegiatan</h2>
+                <button onclick="showAddTaskModal()" class="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-xl text-sm font-medium">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Tambah
+                </button>
+            </div>
+            <div class="flex gap-2 overflow-x-auto pb-3 mb-4">
+                <button class="filter-btn active" data-tf="all" onclick="setTaskFilter('all')">Semua</button>
+                <button class="filter-btn" data-tf="pending" onclick="setTaskFilter('pending')">Belum</button>
+                <button class="filter-btn" data-tf="completed" onclick="setTaskFilter('completed')">Selesai</button>
+            </div>
+            <div id="tasksList" class="space-y-3"></div>
+        </div>
+
+        <!-- PLANNER -->
+        <div id="tab-planner" class="tab-content hidden px-4 pt-4 space-y-4 fade-in">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold">Perencanaan Barang</h2>
+                <button onclick="showAddWishlistModal()" class="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-xl text-sm font-medium">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Wishlist
+                </button>
+            </div>
+            <div id="wishlistList" class="space-y-3"></div>
+
+            <!-- Simulator -->
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4">Simulasi Tabungan</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs font-medium text-sec-c mb-1 block">Pilih dari Wishlist</label>
+                        <select id="simItem" onchange="fillSimFromWishlist()">
+                            <option value="">-- Pilih barang --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-sec-c mb-1 block">Harga Target (Rp)</label>
+                        <input type="number" id="simPrice" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-sec-c mb-1 block">Tabungan Saat Ini (Rp)</label>
+                        <input type="number" id="simCurrent" value="0">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-medium text-sec-c mb-1 block">Target Bulan</label>
+                            <input type="number" id="simMonths" placeholder="Bulan" oninput="clearOther('simMonthly')">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium text-sec-c mb-1 block">Per Bulan (Rp)</label>
+                            <input type="number" id="simMonthly" placeholder="Nominal" oninput="clearOther('simMonths')">
+                        </div>
+                    </div>
+                    <button onclick="calculateSim()" class="w-full py-3 bg-blue-500 text-white rounded-xl font-semibold text-sm">Hitung Simulasi</button>
+                    <div id="simResult" class="hidden p-4 rounded-xl" style="background:var(--border)"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div id="bottomNav" class="fixed bottom-0 left-0 right-0 z-30">
+        <div class="flex justify-around px-2 py-2">
+            <button class="nav-btn flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all" onclick="switchTab('dashboard')">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="text-xs">Dashboard</span>
+            </button>
+            <button class="nav-btn flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all" onclick="switchTab('calendar')">
+                <i data-lucide="calendar" class="w-5 h-5"></i>
+                <span class="text-xs">Kalender</span>
+            </button>
+            <button class="nav-btn flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all" onclick="switchTab('debts')">
+                <i data-lucide="hand-coins" class="w-5 h-5"></i>
+                <span class="text-xs">Utang</span>
+            </button>
+            <button class="nav-btn flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all" onclick="switchTab('tasks')">
+                <i data-lucide="check-square" class="w-5 h-5"></i>
+                <span class="text-xs">Kegiatan</span>
+            </button>
+            <button class="nav-btn flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all" onclick="switchTab('planner')">
+                <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                <span class="text-xs">Planner</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- DEBT MODAL -->
+<div id="debtModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-end z-50">
+    <div class="surface rounded-t-3xl w-full max-h-[90vh] overflow-y-auto slide-panel">
+        <div class="p-5">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-lg font-bold" id="debtModalTitle">Tambah Transaksi</h3>
+                <button onclick="closeModal('debtModal')" class="p-2 rounded-xl" style="background:var(--border)">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="space-y-3">
+                <input type="hidden" id="debtId">
+                <input type="text" id="debtName" placeholder="Nama pihak">
+                <select id="debtType">
+                    <option value="debt">Utang (Saya berhutang ke orang lain)</option>
+                    <option value="receivable">Piutang (Orang lain berhutang ke saya)</option>
+                </select>
+                <input type="number" id="debtAmount" placeholder="Jumlah (Rp)">
+                <div>
+                    <label class="text-xs text-sec-c mb-1 block">Tanggal Jatuh Tempo</label>
+                    <input type="date" id="debtDue">
+                </div>
+                <textarea id="debtNote" placeholder="Catatan (opsional)" rows="2"></textarea>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="saveDebt()" class="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold">Simpan</button>
+                    <button onclick="closeModal('debtModal')" class="flex-1 py-3 rounded-xl font-semibold" style="background:var(--border)">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TASK MODAL -->
+<div id="taskModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-end z-50">
+    <div class="surface rounded-t-3xl w-full max-h-[90vh] overflow-y-auto slide-panel">
+        <div class="p-5">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-lg font-bold" id="taskModalTitle">Tambah Kegiatan</h3>
+                <button onclick="closeModal('taskModal')" class="p-2 rounded-xl" style="background:var(--border)">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="space-y-3">
+                <input type="hidden" id="taskId">
+                <input type="text" id="taskName" placeholder="Nama kegiatan">
+                <div>
+                    <label class="text-xs text-sec-c mb-1 block">Deadline</label>
+                    <input type="date" id="taskDue">
+                </div>
+                <select id="taskPriority">
+                    <option value="high">Prioritas Tinggi</option>
+                    <option value="medium" selected>Prioritas Sedang</option>
+                    <option value="low">Prioritas Rendah</option>
+                </select>
+                <textarea id="taskNotes" placeholder="Catatan (opsional)" rows="2"></textarea>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="saveTask()" class="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold">Simpan</button>
+                    <button onclick="closeModal('taskModal')" class="flex-1 py-3 rounded-xl font-semibold" style="background:var(--border)">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- WISHLIST MODAL -->
+<div id="wishlistModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-end z-50">
+    <div class="surface rounded-t-3xl w-full max-h-[90vh] overflow-y-auto slide-panel">
+        <div class="p-5">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-lg font-bold" id="wishModalTitle">Tambah Wishlist</h3>
+                <button onclick="closeModal('wishlistModal')" class="p-2 rounded-xl" style="background:var(--border)">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="space-y-3">
+                <input type="hidden" id="wishId">
+                <input type="text" id="wishName" placeholder="Nama barang">
+                <input type="number" id="wishPrice" placeholder="Harga target (Rp)">
+                <input type="number" id="wishSaved" placeholder="Tabungan terkumpul (Rp)" value="0">
+                <div>
+                    <label class="text-xs text-sec-c mb-1 block">Prioritas (1 = tertinggi)</label>
+                    <input type="number" id="wishPriority" placeholder="1-5" min="1" max="5" value="3">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="saveWishlist()" class="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold">Simpan</button>
+                    <button onclick="closeModal('wishlistModal')" class="flex-1 py-3 rounded-xl font-semibold" style="background:var(--border)">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EVENT MODAL -->
+<div id="eventModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-end z-50">
+    <div class="surface rounded-t-3xl w-full max-h-[90vh] overflow-y-auto slide-panel">
+        <div class="p-5">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-lg font-bold">Tambah Event</h3>
+                <button onclick="closeModal('eventModal')" class="p-2 rounded-xl" style="background:var(--border)">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="space-y-3">
+                <input type="text" id="evTitle" placeholder="Judul event">
+                <select id="evType">
+                    <option value="reminder">Pengingat Umum</option>
+                    <option value="debt">Pembayaran Utang/Piutang</option>
+                    <option value="task">Deadline Kegiatan</option>
+                    <option value="saving">Target Tabungan</option>
+                </select>
+                <div>
+                    <label class="text-xs text-sec-c mb-1 block">Tanggal</label>
+                    <input type="date" id="evDate">
+                </div>
+                <textarea id="evDesc" placeholder="Deskripsi (opsional)" rows="2"></textarea>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="saveEvent()" class="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold">Simpan</button>
+                    <button onclick="closeModal('eventModal')" class="flex-1 py-3 rounded-xl font-semibold" style="background:var(--border)">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ADD SAVINGS MODAL -->
+<div id="addSavingsModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-end z-50">
+    <div class="surface rounded-t-3xl w-full slide-panel">
+        <div class="p-5">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-lg font-bold">Tambah Tabungan</h3>
+                <button onclick="closeModal('addSavingsModal')" class="p-2 rounded-xl" style="background:var(--border)">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <input type="hidden" id="savingsItemId">
+            <div class="space-y-3">
+                <p class="text-sm text-sec-c" id="savingsItemName"></p>
+                <input type="number" id="savingsAmount" placeholder="Jumlah yang ditambahkan (Rp)">
+                <div class="flex gap-3 pt-2">
+                    <button onclick="addSavings()" class="flex-1 py-3 bg-green-500 text-white rounded-xl font-semibold">Tambah</button>
+                    <button onclick="closeModal('addSavingsModal')" class="flex-1 py-3 rounded-xl font-semibold" style="background:var(--border)">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div id="exportModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-center justify-center z-50">
+    <div class="card mx-4 p-5 w-full max-w-sm fade-in">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold">Ekspor / Impor Data</h3>
+            <button onclick="closeModal('exportModal')" class="p-2 rounded-xl" style="background:var(--border)">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+        <div class="space-y-3">
+            <button onclick="exportData()" class="w-full flex items-center gap-3 p-3 rounded-xl font-medium" style="background:var(--border)">
+                <i data-lucide="download" class="w-5 h-5 text-blue-500"></i>
+                Ekspor Data ke JSON
+            </button>
+            <div>
+                <label class="w-full flex items-center gap-3 p-3 rounded-xl font-medium cursor-pointer" style="background:var(--border)">
+                    <i data-lucide="upload" class="w-5 h-5 text-green-500"></i>
+                    Impor Data dari JSON
+                    <input type="file" accept=".json" onchange="importData(event)" class="hidden">
+                </label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PIN SETUP MODAL -->
+<div id="pinSetupModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-center justify-center z-50">
+    <div class="card mx-4 p-5 w-full max-w-sm fade-in">
+        <h3 class="font-bold mb-4" id="pinSetupTitle">Setup PIN Baru</h3>
+        <div class="space-y-3">
+            <input type="password" id="newPin" placeholder="PIN Baru (6 digit)" maxlength="6" pattern="[0-9]*" inputmode="numeric">
+            <input type="password" id="confirmPin" placeholder="Konfirmasi PIN" maxlength="6" pattern="[0-9]*" inputmode="numeric">
+            <div class="flex gap-3 pt-2">
+                <button onclick="saveNewPin()" class="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold">Simpan</button>
+                <button onclick="closeModal('pinSetupModal')" class="flex-1 py-3 rounded-xl font-semibold" style="background:var(--border)">Batal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
