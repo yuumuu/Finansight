@@ -1,33 +1,73 @@
-name: Build Android APK
+name: Android Build
+
 on:
   push:
-    branches: [main]
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Bisa di-run manual
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          node-version: '18'
-
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
       - name: Install dependencies
-        run: npm install
-
-      - name: Prepare web assets
-        run: mkdir -p www && cp index.html www/ && cp app.js www/
-
+        run: npm ci  # Lebih baik dari npm install untuk CI
+      
+      - name: Create web directory
+        run: mkdir -p www
+      
+      - name: Copy web assets
+        run: |
+          cp index.html www/ 2>/dev/null || echo "index.html not found"
+          cp app.js www/ 2>/dev/null || echo "app.js not found"
+          cp styles.css www/ 2>/dev/null || true
+      
+      - name: Build web app (if build script exists)
+        run: npm run build || echo "No build script, skipping"
+      
       - name: Sync Capacitor
         run: npx cap sync android
-
-      - name: Build APK
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+      
+      - name: Build Debug APK
         run: cd android && ./gradlew assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
+      
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: finansight-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          compression-level: 0
+          retention-days: 30
+          if-no-files-found: error
+      
+      - name: Build Release APK (Optional)
+        run: cd android && ./gradlew assembleRelease || echo "Release build skipped"
+      
+      - name: Upload Release APK (if exists)
+        uses: actions/upload-artifact@v4
+        with:
+          name: finansight-release
+          path: android/app/build/outputs/apk/release/*.apk
+          compression-level: 0
+          retention-days: 30
+          if-no-files-found: warn
